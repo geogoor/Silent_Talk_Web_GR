@@ -96,9 +96,10 @@ Built into `gesture_matcher.py`:
 - **Mirror augmentation at inference:** both orientations tested on every prediction.
 
 For the web edition, the self-recorded samples are exported from
-`data/references/*.npy` to `web/public/references.json` (cleaned to the dominant
-orientation cluster, ~50 samples/letter); the browser rebuilds the KNN dataset from
-it on load.
+`data/references/*.npy` to `web/public/references.json` (the full set —
+originals plus augmentation, so the in-browser KNN trains on exactly the same
+data as the desktop classifier); the browser rebuilds the KNN dataset from it on
+load, adding x-mirror augmentation just like the desktop pipeline.
 
 ---
 

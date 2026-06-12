@@ -4,3 +4,8 @@ __pycache__/
 *.pyc
 *.pyo
 hand_landmarker.task
+# …but keep the self-hosted copy the web app ships
+!web/public/models/hand_landmarker.task
+
+# Raw source photos for reference images (resized copies live in assets/letters/)
+assets/papava/

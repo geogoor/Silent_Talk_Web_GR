@@ -94,9 +94,11 @@ function queryKNN(qn, k = 7) {
 }
 
 function predictKNN(vec) {
-  const a = queryKNN(l2norm(vec));
-  const b = queryKNN(l2norm(mirrorX(vec)));
-  return a.conf >= b.conf ? a : b;
+  // The KNN dataset is mirror-closed: loadData() stores both v and mirrorX(v)
+  // for every sample. Cosine is sign-symmetric under mirrorX, so querying
+  // mirrorX(vec) would scan the exact same multiset of similarities as querying
+  // vec — i.e. it yields an identical top-k. So one query suffices (half the cost).
+  return queryKNN(l2norm(vec));
 }
 
 // Top-5 mean cosine to a letter's raw samples (both orientations) — fallback.
@@ -118,6 +120,11 @@ export function matchScore(vec, letter) {
   if (!DATA || !DATA[letter]) return 0;
   const { label, conf } = predictKNN(vec);
   if (label === letter) return conf;
+  // KNN picked a different letter. Don't return 0 — give partial credit so the
+  // bar moves as the user gets closer, but capped well below MATCH_THRESHOLD so
+  // a wrong letter can never auto-advance: halve the KNN confidence, or fall back
+  // to the raw top-5 cosine similarity to this letter (scaled to 0.8). These two
+  // factors are heuristic, tuned so near-misses read ~0.4–0.7.
   return Math.max(conf * 0.5, cosineScore(vec, letter) * 0.8);
 }
 

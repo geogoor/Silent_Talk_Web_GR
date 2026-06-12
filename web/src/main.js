@@ -51,7 +51,7 @@ function heart(cx, cy, size, filled) {
   ctx.closePath(); ctx.fill();
 }
 
-// ── Reference-image cache with letterbox draw ───────────────────────────────────
+// ── Reference-image cache with cover (fill + center-crop) draw ───────────────────
 const imgCache = {};
 function refImage(letter) {
   if (!(letter in imgCache)) {
@@ -61,7 +61,7 @@ function refImage(letter) {
   }
   return imgCache[letter];
 }
-function drawLetterbox(im, x, y, w, h) {
+function drawCover(im, x, y, w, h) {
   rect(x, y, w, h, C.bg);
   if (!im.complete || !im.naturalWidth) return;
   // Cover: fill (w,h) preserving aspect, center-crop the overflow
@@ -195,7 +195,15 @@ class App {
     d.drawImage(this.video, 0, 0, dc.width, dc.height); d.restore();
 
     let lms = null;
-    try { lms = this.tracker.detect(dc, Math.round(performance.now())); } catch {}
+    try {
+      lms = this.tracker.detect(dc, Math.round(performance.now()));
+    } catch (err) {
+      // Throttle: a failing detector would otherwise flood the console every frame.
+      if (now() - (this._lastDetectWarn || 0) > 3) {
+        this._lastDetectWarn = now();
+        console.warn("hand detection failed:", err);
+      }
+    }
     const vec = lms ? gm.normalize(lms) : null;
     this.lastVec = vec;
 
@@ -255,22 +263,23 @@ class App {
     const rec = gm.recordedLetters().length, best = scores.bestScore();
     text(`${rec} / 24 γράμματα  ·  Ρεκόρ: ${best} pts`, cx, WIN_H-78, { size: 15, color: C.dim, align: "center", base: "middle" });
 
-    // Credits — creator line is clickable (mailto); photo line is plain text
+    // Credits — both lines are clickable (open a mailto)
     this._links = [];
     const sz = 13;
-
-    // Creator (clickable email)
-    const creator = "Δημιουργός: Γουρζιώτης Γιώργος  ·  georgegourziotis@gmail.com";
-    ctx.font = fontStr(sz);
-    const ccw = ctx.measureText(creator).width;
-    const cyCreator = WIN_H - 44;
-    const creatorHover = this._hoverLink === 0;
-    this._links.push({ x: cx - ccw/2, y: cyCreator - 11, w: ccw, h: 22, url: "mailto:georgegourziotis@gmail.com" });
-    text(creator, cx, cyCreator, { size: sz, color: creatorHover ? C.accent : C.dim, align: "center", base: "middle" });
-
-    // Photos — name only, no link
-    text("Φωτογραφίες: ευχαριστώ τον Γιάννη Παπαβασιλείου", cx, WIN_H - 22,
-      { size: sz, color: C.dim, align: "center", base: "middle" });
+    const creditLines = [
+      { text: "Δημιουργός: Γουρζιώτης Γιώργος  ·  georgegourziotis@gmail.com",
+        url: "mailto:georgegourziotis@gmail.com" },
+      { text: "Φωτογραφίες: Γιάννης Παπαβασιλείου  ·  gpapava@gmail.com",
+        url: "mailto:gpapava@gmail.com" },
+    ];
+    creditLines.forEach((c, i) => {
+      ctx.font = fontStr(sz);
+      const cw = ctx.measureText(c.text).width;
+      const cyC = WIN_H - 44 + i * 22;
+      const hover = this._hoverLink === i;
+      this._links.push({ x: cx - cw/2, y: cyC - 11, w: cw, h: 22, url: c.url });
+      text(c.text, cx, cyC, { size: sz, color: hover ? C.accent : C.dim, align: "center", base: "middle" });
+    });
 
     if (vec) {
       const { letter, score } = gm.bestMatch(vec, gm.recordedLetters());
@@ -302,7 +311,7 @@ class App {
     }
 
     const PROGRESS_H = 4, imgH = WIN_H - PROGRESS_H;
-    drawLetterbox(refImage(letter), 0, 0, HALF, imgH);
+    drawCover(refImage(letter), 0, 0, HALF, imgH);
 
     // bottom gradient
     const g = ctx.createLinearGradient(0, imgH-180, 0, imgH);

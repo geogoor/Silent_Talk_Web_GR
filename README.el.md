@@ -104,8 +104,10 @@ normalization + KNN/cosine, μαζί με το x-mirror augmentation.
   πρόβλεψη.
 
 Για τη web έκδοση, τα self-recorded samples εξάγονται από τα `data/references/*.npy`
-στο `web/public/references.json` (καθαρισμένα στο dominant orientation cluster, ~50
-δείγματα/γράμμα)· ο browser ξαναχτίζει το KNN dataset από αυτό κατά τη φόρτωση.
+στο `web/public/references.json` (ολόκληρο το σετ — originals συν το augmentation,
+ώστε το KNN στον browser να εκπαιδεύεται στα ίδια ακριβώς δεδομένα με τον desktop
+classifier)· ο browser ξαναχτίζει το KNN dataset από αυτό κατά τη φόρτωση,
+προσθέτοντας x-mirror augmentation όπως και το desktop pipeline.
 
 ---
 
