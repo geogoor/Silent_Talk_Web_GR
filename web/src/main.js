@@ -86,6 +86,7 @@ class App {
     this.gameStart = 0; this.letterStart = 0; this.hold = 0; this.gameCool = 0;
     this.fbMsg = ""; this.fbColor = C.success; this.fbT = 0;
     this.finalScore = 0; this.finalLetters = 0; this.finalTime = 0; this.rank = 0;
+    this.tipUntil = 0; this.tipSeen = false;   // one-time camera tips on first practice
 
     window.addEventListener("keydown", (e) => this.onKey(e));
     canvas.addEventListener("mousemove", (e) => this.onMouse(e, false));
@@ -107,6 +108,7 @@ class App {
   }
   homeHit(cx, cy) { return cx >= 8 && cx <= 60 && cy >= 8 && cy <= 56; }
   onMouse(e, click) {
+    if (click && this.tipUntil > now()) { this.tipUntil = 0; return; }   // dismiss tip
     const [cx, cy] = this.canvasXY(e);
     if (this.mode !== MENU) {
       const overHome = this.homeHit(cx, cy);
@@ -142,10 +144,14 @@ class App {
     if (k === "ArrowLeft")  return this.handleKey("ArrowLeft");
     this.handleKey(k.toLowerCase());
   }
+  maybeTip() {            // show the camera tips once, on first practice
+    if (!this.tipSeen) { this.tipSeen = true; this.tipUntil = now() + 5; }
+  }
   handleKey(k) {
+    if (this.tipUntil > now()) { this.tipUntil = 0; return; }   // any key dismisses the tip
     if (k === "f") return toggleFullscreen();
     if (this.mode === MENU) {
-      if (k === "1") { this.learnIdx = 0; this.learnHold = 0; this.mode = LEARN; }
+      if (k === "1") { this.learnIdx = 0; this.learnHold = 0; this.mode = LEARN; this.maybeTip(); }
       else if (k === "2") this.startGame();
       else if (k === "3") this.mode = SCORES;
     } else if (this.mode === LEARN) {
@@ -168,6 +174,7 @@ class App {
     this.gameLetters = [...GREEK_LETTERS].sort(() => Math.random() - 0.5);
     this.gameIdx = 0; this.lives = MAX_LIVES; this.score = 0;
     this.gameStart = this.letterStart = now(); this.hold = 0; this.mode = GAME;
+    this.maybeTip();
   }
   nextLetter() {
     this.gameIdx++; this.hold = 0;
@@ -229,6 +236,10 @@ class App {
     // Left half base
     rect(0, 0, HALF, WIN_H, C.bg);
 
+    // While the camera-tips overlay is up, keep the game clock frozen.
+    const tipUp = this.tipUntil > now();
+    if (tipUp && this.mode === GAME) this.gameStart = this.letterStart = now();
+
     if (this.mode === MENU) this.drawMenu(vec);
     else if (this.mode === LEARN) this.drawLearn(vec);
     else if (this.mode === GAME) this.drawGame(vec);
@@ -237,6 +248,29 @@ class App {
 
     if (this.mode !== MENU) this.drawHome();
     text("F", WIN_W - 20, WIN_H - 12, { size: 13, color: "rgb(60,58,55)", align: "right", base: "middle" });
+
+    if (tipUp) this.drawTip();
+  }
+
+  // ── First-use camera tips (auto-dismiss after 5s, or on any interaction) ─────────
+  drawTip() {
+    panel(0, 0, WIN_W, WIN_H, C.bg, 0.9);
+    const cx = WIN_W/2;
+    text("📷  Πριν ξεκινήσεις", cx, 188, { size: 34, color: C.amber, align: "center", base: "middle" });
+    const tips = [
+      "Το χέρι σου να φαίνεται καθαρά, ολόκληρο μέσα στο κάδρο",
+      "Απόφυγε έντονο φως ή κόντρα φωτισμό πίσω σου — μπερδεύει την αναγνώριση",
+      "Προτίμησε ουδέτερο φόντο και δείξε ένα χέρι τη φορά",
+      "Κράτα το χέρι ~30–50 cm από την κάμερα",
+    ];
+    tips.forEach((t, i) => {
+      const y = 268 + i*52;
+      text("•", cx-330, y, { size: 22, color: C.accent, align: "center", base: "middle" });
+      text(t, cx-308, y, { size: 21, color: C.text, align: "left", base: "middle" });
+    });
+    const remain = Math.ceil(this.tipUntil - now());
+    text(`Ξεκινά σε ${remain}…  (πάτησε για παράλειψη)`, cx, WIN_H-90,
+      { size: 16, color: C.dim, align: "center", base: "middle" });
   }
 
   // ── MENU ─────────────────────────────────────────────────────────────────────
