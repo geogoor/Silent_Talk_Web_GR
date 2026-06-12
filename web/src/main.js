@@ -86,7 +86,8 @@ class App {
     this.gameStart = 0; this.letterStart = 0; this.hold = 0; this.gameCool = 0;
     this.fbMsg = ""; this.fbColor = C.success; this.fbT = 0;
     this.finalScore = 0; this.finalLetters = 0; this.finalTime = 0; this.rank = 0;
-    this.tipUntil = 0; this.tipSeen = false;   // one-time camera tips on first practice
+    this.tipShowing = false; this.tipSeen = false;   // one-time camera tips on first practice
+    this._okRect = null; this._okHover = false;
 
     window.addEventListener("keydown", (e) => this.onKey(e));
     canvas.addEventListener("mousemove", (e) => this.onMouse(e, false));
@@ -108,8 +109,14 @@ class App {
   }
   homeHit(cx, cy) { return cx >= 8 && cx <= 60 && cy >= 8 && cy <= 56; }
   onMouse(e, click) {
-    if (click && this.tipUntil > now()) { this.tipUntil = 0; return; }   // dismiss tip
     const [cx, cy] = this.canvasXY(e);
+    if (this.tipShowing) {                                  // modal: only the OK button is live
+      const r = this._okRect;
+      this._okHover = !!r && cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h;
+      canvas.style.cursor = this._okHover ? "pointer" : "default";
+      if (click && this._okHover) this.tipShowing = false;
+      return;
+    }
     if (this.mode !== MENU) {
       const overHome = this.homeHit(cx, cy);
       this.homeHover = overHome;
@@ -145,10 +152,10 @@ class App {
     this.handleKey(k.toLowerCase());
   }
   maybeTip() {            // show the camera tips once, on first practice
-    if (!this.tipSeen) { this.tipSeen = true; this.tipUntil = now() + 5; }
+    if (!this.tipSeen) { this.tipSeen = true; this.tipShowing = true; }
   }
   handleKey(k) {
-    if (this.tipUntil > now()) { this.tipUntil = 0; return; }   // any key dismisses the tip
+    if (this.tipShowing) { this.tipShowing = false; return; }   // any key dismisses the tip
     if (k === "f") return toggleFullscreen();
     if (this.mode === MENU) {
       if (k === "1") { this.learnIdx = 0; this.learnHold = 0; this.mode = LEARN; this.maybeTip(); }
@@ -237,7 +244,7 @@ class App {
     rect(0, 0, HALF, WIN_H, C.bg);
 
     // While the camera-tips overlay is up, keep the game clock frozen.
-    const tipUp = this.tipUntil > now();
+    const tipUp = this.tipShowing;
     if (tipUp && this.mode === GAME) this.gameStart = this.letterStart = now();
 
     if (this.mode === MENU) this.drawMenu(vec);
@@ -252,11 +259,11 @@ class App {
     if (tipUp) this.drawTip();
   }
 
-  // ── First-use camera tips (auto-dismiss after 5s, or on any interaction) ─────────
+  // ── First-use camera tips (modal; dismissed with the OK button or any key) ───────
   drawTip() {
     panel(0, 0, WIN_W, WIN_H, C.bg, 0.9);
     const cx = WIN_W/2;
-    text("📷  Πριν ξεκινήσεις", cx, 188, { size: 34, color: C.amber, align: "center", base: "middle" });
+    text("📷  Πριν ξεκινήσεις", cx, 178, { size: 34, color: C.amber, align: "center", base: "middle" });
     const tips = [
       "Το χέρι σου να φαίνεται καθαρά, ολόκληρο μέσα στο κάδρο",
       "Απόφυγε έντονο φως ή κόντρα φωτισμό πίσω σου — μπερδεύει την αναγνώριση",
@@ -264,13 +271,18 @@ class App {
       "Κράτα το χέρι ~30–50 cm από την κάμερα",
     ];
     tips.forEach((t, i) => {
-      const y = 268 + i*52;
+      const y = 256 + i*52;
       text("•", cx-330, y, { size: 22, color: C.accent, align: "center", base: "middle" });
       text(t, cx-308, y, { size: 21, color: C.text, align: "left", base: "middle" });
     });
-    const remain = Math.ceil(this.tipUntil - now());
-    text(`Ξεκινά σε ${remain}…  (πάτησε για παράλειψη)`, cx, WIN_H-90,
-      { size: 16, color: C.dim, align: "center", base: "middle" });
+    // OK button
+    const bw = 160, bh = 52, bx = cx - bw/2, by = WIN_H - 132;
+    this._okRect = { x: bx, y: by, w: bw, h: bh };
+    const hov = this._okHover;
+    ctx.save(); ctx.globalAlpha = hov ? 1 : 0.92;
+    ctx.fillStyle = C.accent; roundRectPath(bx, by, bw, bh, 12); ctx.fill();
+    ctx.restore();
+    text("OK", cx, by + bh/2, { size: 24, color: "rgb(8,10,16)", align: "center", base: "middle" });
   }
 
   // ── MENU ─────────────────────────────────────────────────────────────────────
