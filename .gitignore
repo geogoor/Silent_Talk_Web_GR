@@ -1,0 +1,6 @@
+venv/
+data/training_video.mp4
+__pycache__/
+*.pyc
+*.pyo
+hand_landmarker.task

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Sign Language GR — Ελληνική Νοηματική Γλώσσα</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; background: #0a0707; overflow: hidden; font-family: system-ui, "Segoe UI", Arial, sans-serif; }
+    #stage { position: fixed; inset: 0; display: grid; place-items: center; }
+    canvas { background: #0a0707; max-width: 100vw; max-height: 100vh; aspect-ratio: 16 / 9; width: 100%; image-rendering: auto; }
+    #gate { position: fixed; inset: 0; display: grid; place-items: center; background: #0a0707; z-index: 10; text-align: center; padding: 24px; }
+    #gate h1 { color: #fff; font-size: clamp(28px, 5vw, 52px); font-weight: 800; letter-spacing: .5px; }
+    #gate p  { color: #9a928c; margin: 10px 0 28px; font-size: clamp(14px, 2.2vw, 19px); }
+    #start {
+      appearance: none; border: 1px solid #4F8EF7; background: #4F8EF7; color: #fff;
+      font-size: 18px; font-weight: 700; padding: 14px 34px; border-radius: 10px; cursor: pointer;
+      transition: transform .08s ease, background .15s ease;
+    }
+    #start:hover { background: #3b7bf0; transform: translateY(-1px); }
+    #start:disabled { opacity: .6; cursor: default; }
+    #err { color: #D25050; margin-top: 18px; min-height: 22px; font-size: 14px; max-width: 520px; }
+    video { display: none; }
+  </style>
+</head>
+<body>
+  <div id="stage"><canvas id="c" width="1280" height="720"></canvas></div>
+  <video id="cam" playsinline muted></video>
+
+  <div id="gate">
+    <div>
+      <h1>Sign Language GR</h1>
+      <p>Ελληνική Νοηματική Γλώσσα · Μάθε το αλφάβητο με την κάμερά σου</p>
+      <button id="start">Ξεκίνα με την κάμερα</button>
+      <div id="err"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
