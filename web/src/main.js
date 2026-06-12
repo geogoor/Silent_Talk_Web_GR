@@ -21,6 +21,14 @@ function text(msg, x, y, { size = 28, color = C.text, align = "left", base = "al
   ctx.fillText(msg, x, y);
 }
 function rect(x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, y, w, h); }
+function roundRectPath(x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r); ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);     ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
 function bar(x, y, w, h, ratio, fg, bg = C.barbg) {
   ratio = Math.max(0, Math.min(1, ratio));
   rect(x, y, w, h, bg);
@@ -68,7 +76,7 @@ class App {
   constructor(tracker, video, detCanvas) {
     this.tracker = tracker; this.video = video; this.det = detCanvas;
     this.dctx = detCanvas.getContext("2d");
-    this.mode = MENU; this.lastVec = null; this.hoverIdx = -1;
+    this.mode = MENU; this.lastVec = null; this.hoverIdx = -1; this.homeHover = false;
 
     this.learnIdx = 0; this.learnHold = 0; this.learnCool = 0;
     this.gameLetters = []; this.gameIdx = 0; this.lives = MAX_LIVES; this.score = 0;
@@ -94,12 +102,28 @@ class App {
     }
     return -1;
   }
+  homeHit(cx, cy) { return cx >= 8 && cx <= 60 && cy >= 8 && cy <= 56; }
   onMouse(e, click) {
-    if (this.mode !== MENU) return;
     const [cx, cy] = this.canvasXY(e);
+    if (this.mode !== MENU) {
+      const overHome = this.homeHit(cx, cy);
+      this.homeHover = overHome;
+      canvas.style.cursor = overHome ? "pointer" : "default";
+      if (click && overHome) this.mode = MENU;
+      return;
+    }
     const idx = this.menuHit(cx, cy);
     if (click) { if (idx >= 0) this.handleKey(["1","2","3","f"][idx]); }
-    else this.hoverIdx = idx;
+    else { this.hoverIdx = idx; canvas.style.cursor = idx >= 0 ? "pointer" : "default"; }
+  }
+  drawHome() {
+    const hov = this.homeHover;
+    ctx.save(); ctx.globalAlpha = hov ? 0.95 : 0.78;
+    ctx.fillStyle = C.surface; roundRectPath(12, 12, 44, 40, 10); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = hov ? C.accent : "rgb(72,68,64)"; ctx.lineWidth = 1.5;
+    roundRectPath(12, 12, 44, 40, 10); ctx.stroke();
+    text("←", 34, 33, { size: 24, color: hov ? C.accent : C.text, align: "center", base: "middle" });
   }
   onKey(e) {
     const k = e.key;
@@ -193,6 +217,7 @@ class App {
     else if (this.mode === WIN || this.mode === GAMEOVER) this.drawEnd();
     else if (this.mode === SCORES) this.drawScores();
 
+    if (this.mode !== MENU) this.drawHome();
     text("F", WIN_W - 20, WIN_H - 12, { size: 13, color: "rgb(60,58,55)", align: "right", base: "middle" });
   }
 
@@ -259,7 +284,7 @@ class App {
 
     text(letter, 22, imgH-18, { size: 80, color: C.amber, base: "alphabetic" });
     text(`${this.learnIdx+1} / 24`, HALF-16, imgH-18, { size: 18, color: C.dim, align: "right" });
-    text("← →", 16, 32, { size: 15, color: "rgb(65,60,58)" });
+    text("← →", 70, 32, { size: 15, color: "rgb(120,116,112)", base: "middle" });
 
     rect(0, imgH, HALF, PROGRESS_H, C.bg);
     const ratio = this.learnIdx / 23, filled = Math.max(2, HALF*ratio);
@@ -314,8 +339,8 @@ class App {
 
     if (now() - this.fbT < 0.4) flash(this.fbColor, 0.18);
 
-    text(String(this.score), 28, 42, { size: 32, base: "middle" });
-    text("pts", 28 + String(this.score).length*19 + 6, 44, { size: 15, color: C.dim, base: "middle" });
+    text(String(this.score), 64, 42, { size: 32, base: "middle" });
+    text("pts", 64 + String(this.score).length*19 + 6, 44, { size: 15, color: C.dim, base: "middle" });
     for (let i = 0; i < MAX_LIVES; i++) heart(HALF-18-i*30, 38, 13, i < this.lives);
     ctx.strokeStyle = C.surface; ctx.beginPath(); ctx.moveTo(28,62); ctx.lineTo(HALF-28,62); ctx.stroke();
 
