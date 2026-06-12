@@ -1,205 +1,169 @@
 # Sign Language GR — Ελληνική Νοηματική Γλώσσα
 
-An interactive learning game for the **Greek Sign Language (ΕΝΓ) alphabet**, built entirely from scratch — including a **custom-trained gesture recognition model** using my own hand as training data.
+**English** · [Ελληνικά](README.el.md)
 
-> **Portfolio project** — No pre-existing ΕΝΓ dataset exists publicly. Every component, from data collection to the trained classifier, was designed and built by hand.
+An interactive learning game for the **Greek Sign Language (ΕΝΓ) alphabet**, built
+from scratch — including a **custom-trained gesture recognition model** using my own
+hand as training data. It ships in two flavours:
+
+- 🌐 **Web edition** (`web/`) — runs entirely in the browser, no install. Hand
+  tracking via MediaPipe WASM, the KNN classifier ported to JavaScript. Deployable
+  to Vercel as a static site.
+- 🖥️ **Desktop edition** (Python + OpenCV) — the original app and the full
+  data-collection / self-training toolchain.
+
+> **Portfolio project** — No pre-existing ΕΝΓ dataset exists publicly. Every
+> component, from data collection to the trained classifier, was designed and built
+> by hand.
 
 ---
 
-## Demo
+## Try it online
 
-| Learn Mode | Game Mode |
-|---|---|
-| Reference image of sign · Live webcam · Auto-advance on correct gesture | Letter prompt from memory · Timer · Lives · Score |
+The web edition needs only a webcam and a modern browser (Chrome/Edge/Firefox).
+Camera access requires HTTPS — Vercel provides it automatically, and `localhost`
+works for local dev.
+
+```bash
+cd web
+npm install
+npm run dev        # open the printed localhost URL, allow camera
+```
+
+Everything runs **client-side** — no server, no data leaves your device.
 
 ---
 
 ## How It Works
 
-The app uses your webcam to detect your hand in real time, extracts 21 3D landmarks via **MediaPipe**, normalizes them into a scale- and position-invariant vector, and classifies the gesture using a **KNN model trained on my own hand**.
+The app uses your webcam to detect your hand in real time, extracts 21 3D landmarks
+via **MediaPipe**, normalizes them into a scale- and position-invariant vector, and
+classifies the gesture using a **KNN model trained on my own hand**.
 
 ```
 Webcam → MediaPipe (21 landmarks) → Normalize → KNN Classifier → Match %
 ```
 
----
-
-## Project Phases
-
-### Phase 1 — The Problem: No Dataset Exists
-
-Greek Sign Language has no public hand gesture dataset. The only option was to build one from scratch.
-
-**Approach:** Find a reference video of the ΕΝΓ alphabet, extract reference images from it, then **record my own gestures** as the actual training data.
+The exact same pipeline runs natively in Python (`gesture_matcher.py`) and in the
+browser (`web/src/matcher.js`) — the JS port is a faithful re-implementation of the
+normalization + KNN/cosine logic, including x-mirror augmentation.
 
 ---
 
-### Phase 2 — Automated Data Extraction from Video
-
-Built `auto_extract.py` — a script that:
-- Takes a YouTube video of the ΕΝΓ alphabet
-- Detects each letter's timestamp automatically
-- Extracts a reference screenshot per letter (used in Learn mode)
-- Collects 40 landmark samples per letter from the video
-
-```bash
-python3 auto_extract.py
-```
-
-Also built `video_trainer.py` — an interactive frame-by-frame tool for manual correction of timestamps.
-
----
-
-### Phase 3 — Self-Training the Model
-
-This is the core of the project. Since gesture recognition is highly personal (hand shape, size, and angle vary between people), **I recorded my own hand performing all 24 Greek letters**.
-
-Built `train_self.py` — a guided recording tool that:
-- Shows the reference image of each sign on the left
-- Shows the live webcam on the right
-- Captures **60 samples per letter** after a 3-second countdown
-- Progresses automatically through all 24 letters
-
-```bash
-python3 train_self.py
-```
-
-**Total self-recorded samples:** 60 × 24 = **1,440 personal gesture samples**
-
-Then ran `augment_data.py` to expand the dataset:
-- X-axis mirror (handles camera flip vs reference video orientation)
-- Gaussian noise
-- Scale variation (±10%)
-- 3D rotation (±10°)
-
-**Final dataset:** 120 samples per letter = **2,880 augmented samples**
-
----
-
-### Phase 4 — Training the KNN Classifier
-
-Built the classifier directly into `gesture_matcher.py`:
-
-```python
-python3 -c "import gesture_matcher as gm; acc = gm.train_classifier(); print(f'{acc:.1%}')"
-```
-
-**Model:** K-Nearest Neighbors (scikit-learn) with cosine distance metric  
-**Features:** 63-dimensional L2-normalized vector (21 landmarks × xyz)  
-**Cross-validation accuracy:** ~100% on personal training data  
-**Saved to:** `data/classifier.pkl`
-
-Key technical decisions:
-- **Normalization:** subtract wrist position, scale by wrist→middle-MCP distance → invariant to hand position and distance from camera
-- **Mirror augmentation at inference time:** training video was unflipped; webcam feed is horizontally flipped → both orientations are tested at every prediction
-- **KNN with `weights="distance"`:** closer neighbors count more, reduces noise from borderline samples
-
----
-
-### Phase 5 — The Game
+## The Game
 
 Three modes, controlled with keyboard or mouse:
 
-#### 🎓 Learn Mode (`[1]`)
-- Left panel: reference photo of the sign
-- Right panel: live webcam with hand landmarks
-- **Hold the correct gesture for 2 seconds** → auto-advances to next letter
-- 2.5-second cooldown after each advance (prevents false positives on transition)
-- Thin progress bar at bottom showing completion
+#### 🎓 Learn Mode `[1]`
+- Reference illustration of the sign on the left, live webcam with hand landmarks
+  on the right.
+- **Hold the correct gesture for 2 seconds** → auto-advances to the next letter.
+- Short cooldown after each advance to avoid false positives on transitions.
 
-#### 🎮 Game Mode (`[2]`)
-- All **24 letters in random order**, no reference image — test your memory
-- Each letter shown as large text with its Greek name (Άλφα, Βήτα...)
-- 8-second timer per letter, 3 lives
-- Scoring: +10 pts per correct answer, +5 bonus if answered in under 3 seconds
-- 2-second cooldown after each answer
+#### 🎮 Game Mode `[2]`
+- All **24 letters in random order**, no reference image — test your memory.
+- Each letter shown large with its Greek name (Άλφα, Βήτα…).
+- 8-second timer per letter, 3 lives.
+- Scoring: +10 pts per correct answer, +5 bonus if answered in under 3 seconds.
 
-#### 🏆 Scoreboard (`[3]`)
-- Top 5 scores saved locally with letter count and time
+#### 🏆 Scoreboard `[3]`
+- Top 5 scores saved locally (desktop: JSON file · web: `localStorage`).
+
+`[F]` toggles fullscreen.
+
+---
+
+## How the Model Was Built
+
+### Phase 1 — The Problem: No Dataset Exists
+Greek Sign Language has no public hand-gesture dataset. The only option was to build
+one from scratch — record my own hand performing all 24 letters.
+
+### Phase 2 — Self-Recording the Data
+`train_self.py` is a guided recording tool: it shows the reference sign, captures 60
+landmark samples per letter after a countdown, and progresses through all 24 letters.
+
+### Phase 3 — Augmentation
+`augment_data.py` expands the dataset with x-mirror (camera flip vs reference
+orientation), Gaussian noise, scale variation (±10%), and 3D rotation (±10°).
+
+### Phase 4 — Training the KNN Classifier
+Built into `gesture_matcher.py`:
+- **Model:** K-Nearest Neighbors (scikit-learn) with cosine distance, `weights="distance"`.
+- **Features:** 63-dimensional L2-normalized vector (21 landmarks × xyz).
+- **Normalization:** subtract wrist, scale by wrist→middle-MCP distance → invariant to
+  hand position and distance from camera.
+- **Mirror augmentation at inference:** both orientations tested on every prediction.
+
+For the web edition, the self-recorded samples are exported from
+`data/references/*.npy` to `web/public/references.json` (cleaned to the dominant
+orientation cluster, ~50 samples/letter); the browser rebuilds the KNN dataset from
+it on load.
 
 ---
 
 ## Technical Stack
 
-| Component | Technology |
-|---|---|
-| Hand detection | MediaPipe HandLandmarker (Tasks API) |
-| Gesture classification | scikit-learn KNeighborsClassifier |
-| Camera & UI | OpenCV |
-| Greek text rendering | Pillow (PIL) |
-| Data augmentation | NumPy |
-| Video download | yt-dlp |
+| Component | Desktop | Web |
+|---|---|---|
+| Hand detection | MediaPipe HandLandmarker (Tasks API) | MediaPipe Tasks Vision (WASM) |
+| Gesture classification | scikit-learn KNeighborsClassifier | KNN/cosine ported to JS |
+| Camera & UI | OpenCV | Canvas 2D + getUserMedia |
+| Greek text | Pillow (PIL) | native Canvas text |
+| Build / host | Python | Vite → Vercel (static) |
 
 ---
 
-## Installation
+## Deploy the Web Edition to Vercel
+
+The web app lives in `web/`. In the Vercel project settings:
+
+- **Framework Preset:** Vite
+- **Root Directory:** `web`
+- Build command `npm run build`, output `dist` (Vite defaults — auto-detected)
+
+Static site, no env vars or serverless functions needed. See [`web/README.md`](web/README.md).
+
+---
+
+## Desktop Installation
 
 ```bash
-git clone https://github.com/F0rgiv3n/SilentTalkGr
-cd Sign_Language_GR
-
 python3 -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt   # mediapipe, opencv-python, numpy, pillow, scikit-learn
 
-pip install mediapipe opencv-python numpy pillow scikit-learn yt-dlp
+python3 main.py                   # MediaPipe model auto-downloads on first run
 ```
 
-Download the MediaPipe hand landmark model (auto-downloaded on first run):
-
-```bash
-python3 main.py
-```
-
----
-
-## Train on Your Own Hand (Recommended)
-
+### Train on Your Own Hand (Recommended)
 The included model was trained on **my hand**. For best accuracy, record your own:
 
 ```bash
-source venv/bin/activate
-python3 train_self.py
+python3 train_self.py             # hold each sign ~3s; press [T] to train when done
 ```
-
-Follow the on-screen instructions — hold each sign for ~3 seconds, the app captures 60 samples and moves to the next letter automatically. After all 24 letters, press `[T]` to train and save the classifier.
 
 ---
 
 ## Project Structure
 
 ```
-Sign_Language_GR/
-├── main.py              # Main app (UI, game logic)
+.
+├── main.py              # Desktop app (UI, game logic)
 ├── gesture_matcher.py   # Normalization, KNN classifier, cosine matching
 ├── hand_tracker.py      # MediaPipe HandLandmarker wrapper
 ├── train_self.py        # Guided self-recording training tool
-├── auto_extract.py      # Automated extraction from training video
-├── video_trainer.py     # Manual frame-by-frame labeling tool
-├── augment_data.py      # Data augmentation (mirror, noise, scale, rotation)
-├── score_tracker.py     # High score persistence
+├── augment_data.py      # Data augmentation
+├── score_tracker.py     # High-score persistence
 ├── progress_tracker.py  # Greek alphabet definition
 ├── data/
-│   ├── references/      # Per-letter .npy landmark arrays
+│   ├── references/      # Per-letter .npy landmark arrays (self-recorded)
 │   └── classifier.pkl   # Trained KNN model
-└── assets/
-    └── letters/         # Reference screenshots (Α.jpg … Ω.jpg)
+├── assets/letters/      # Reference illustrations (Α.jpg … Ω.jpg)
+└── web/                 # Browser edition (Vite + MediaPipe WASM + JS KNN)
+    ├── src/             # main.js, matcher.js, hand.js, scores.js, state.js
+    └── public/          # references.json (exported samples) + letters/
 ```
-
----
-
-## Key Challenges & Solutions
-
-**Challenge:** No ΕΝΓ dataset exists publicly  
-**Solution:** Built a self-recording pipeline → trained on personal gesture data
-
-**Challenge:** Training video was unflipped; webcam feed is horizontally mirrored  
-**Solution:** Mirror augmentation at inference time — both orientations tested on every prediction
-
-**Challenge:** Gesture recognition too sensitive (false positives on transitions)  
-**Solution:** 2-second hold requirement + 2-second cooldown after each recognition event
-
-**Challenge:** OpenCV cannot render Greek Unicode text  
-**Solution:** Pillow (PIL) used for all text rendering, converted back to BGR for OpenCV
 
 ---
 
