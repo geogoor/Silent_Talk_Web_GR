@@ -7,7 +7,6 @@ import * as gm from "./matcher.js";
 import * as scores from "./scores.js";
 
 const BASE = import.meta.env.BASE_URL || "/";
-const GITHUB_URL = "https://github.com/geogoor";
 const now  = () => performance.now() / 1000;   // seconds, monotonic
 
 // ── Canvas + drawing helpers ───────────────────────────────────────────────────
@@ -80,7 +79,7 @@ class App {
     this.tracker = tracker; this.video = video; this.det = detCanvas;
     this.dctx = detCanvas.getContext("2d");
     this.mode = MENU; this.lastVec = null; this.hoverIdx = -1; this.homeHover = false;
-    this.creditHover = false; this._creditRect = null;
+    this._links = []; this._hoverLink = -1;
 
     this.learnIdx = 0; this.learnHold = 0; this.learnCool = 0;
     this.gameLetters = []; this.gameIdx = 0; this.lives = MAX_LIVES; this.score = 0;
@@ -117,14 +116,14 @@ class App {
       return;
     }
     const idx = this.menuHit(cx, cy);
-    const cr = this._creditRect;
-    const overCredit = !!cr && cx >= cr.x && cx <= cr.x + cr.w && cy >= cr.y && cy <= cr.y + cr.h;
+    const linkIdx = this._links.findIndex(l =>
+      cx >= l.x && cx <= l.x + l.w && cy >= l.y && cy <= l.y + l.h);
     if (click) {
       if (idx >= 0) this.handleKey(["1","2","3","f"][idx]);
-      else if (overCredit) window.open(GITHUB_URL, "_blank", "noopener");
+      else if (linkIdx >= 0) window.open(this._links[linkIdx].url, "_blank", "noopener");
     } else {
-      this.hoverIdx = idx; this.creditHover = overCredit;
-      canvas.style.cursor = (idx >= 0 || overCredit) ? "pointer" : "default";
+      this.hoverIdx = idx; this._hoverLink = linkIdx;
+      canvas.style.cursor = (idx >= 0 || linkIdx >= 0) ? "pointer" : "default";
     }
   }
   drawHome() {
@@ -254,15 +253,24 @@ class App {
     });
 
     const rec = gm.recordedLetters().length, best = scores.bestScore();
-    text(`${rec} / 24 γράμματα  ·  Ρεκόρ: ${best} pts`, cx, WIN_H-52, { size: 15, color: C.dim, align: "center", base: "middle" });
+    text(`${rec} / 24 γράμματα  ·  Ρεκόρ: ${best} pts`, cx, WIN_H-78, { size: 15, color: C.dim, align: "center", base: "middle" });
 
-    // Credit / contact (clickable → GitHub profile)
-    const credit = "Δημιουργήθηκε από George Gou  ·  github.com/geogoor";
-    ctx.font = fontStr(14);
-    const cw = ctx.measureText(credit).width;
-    const cyC = WIN_H - 24;
-    this._creditRect = { x: cx - cw/2, y: cyC - 12, w: cw, h: 24 };
-    text(credit, cx, cyC, { size: 14, color: this.creditHover ? C.accent : C.dim, align: "center", base: "middle" });
+    // Credits — creator line is clickable (mailto); photo line is plain text
+    this._links = [];
+    const sz = 13;
+
+    // Creator (clickable email)
+    const creator = "Δημιουργός: Γουρζιώτης Γιώργος  ·  georgegourziotis@gmail.com";
+    ctx.font = fontStr(sz);
+    const ccw = ctx.measureText(creator).width;
+    const cyCreator = WIN_H - 44;
+    const creatorHover = this._hoverLink === 0;
+    this._links.push({ x: cx - ccw/2, y: cyCreator - 11, w: ccw, h: 22, url: "mailto:georgegourziotis@gmail.com" });
+    text(creator, cx, cyCreator, { size: sz, color: creatorHover ? C.accent : C.dim, align: "center", base: "middle" });
+
+    // Photos — name only, no link
+    text("Φωτογραφίες: ευχαριστώ τον Γιάννη Παπαβασιλείου", cx, WIN_H - 22,
+      { size: sz, color: C.dim, align: "center", base: "middle" });
 
     if (vec) {
       const { letter, score } = gm.bestMatch(vec, gm.recordedLetters());
