@@ -7,6 +7,7 @@ import * as gm from "./matcher.js";
 import * as scores from "./scores.js";
 
 const BASE = import.meta.env.BASE_URL || "/";
+const GITHUB_URL = "https://github.com/geogoor";
 const now  = () => performance.now() / 1000;   // seconds, monotonic
 
 // ── Canvas + drawing helpers ───────────────────────────────────────────────────
@@ -77,6 +78,7 @@ class App {
     this.tracker = tracker; this.video = video; this.det = detCanvas;
     this.dctx = detCanvas.getContext("2d");
     this.mode = MENU; this.lastVec = null; this.hoverIdx = -1; this.homeHover = false;
+    this.creditHover = false; this._creditRect = null;
 
     this.learnIdx = 0; this.learnHold = 0; this.learnCool = 0;
     this.gameLetters = []; this.gameIdx = 0; this.lives = MAX_LIVES; this.score = 0;
@@ -113,8 +115,15 @@ class App {
       return;
     }
     const idx = this.menuHit(cx, cy);
-    if (click) { if (idx >= 0) this.handleKey(["1","2","3","f"][idx]); }
-    else { this.hoverIdx = idx; canvas.style.cursor = idx >= 0 ? "pointer" : "default"; }
+    const cr = this._creditRect;
+    const overCredit = !!cr && cx >= cr.x && cx <= cr.x + cr.w && cy >= cr.y && cy <= cr.y + cr.h;
+    if (click) {
+      if (idx >= 0) this.handleKey(["1","2","3","f"][idx]);
+      else if (overCredit) window.open(GITHUB_URL, "_blank", "noopener");
+    } else {
+      this.hoverIdx = idx; this.creditHover = overCredit;
+      canvas.style.cursor = (idx >= 0 || overCredit) ? "pointer" : "default";
+    }
   }
   drawHome() {
     const hov = this.homeHover;
@@ -243,7 +252,15 @@ class App {
     });
 
     const rec = gm.recordedLetters().length, best = scores.bestScore();
-    text(`${rec} / 24 γράμματα  ·  Ρεκόρ: ${best} pts`, cx, WIN_H-28, { size: 15, color: C.dim, align: "center", base: "middle" });
+    text(`${rec} / 24 γράμματα  ·  Ρεκόρ: ${best} pts`, cx, WIN_H-52, { size: 15, color: C.dim, align: "center", base: "middle" });
+
+    // Credit / contact (clickable → GitHub profile)
+    const credit = "Δημιουργήθηκε από George Gou  ·  github.com/geogoor";
+    ctx.font = fontStr(14);
+    const cw = ctx.measureText(credit).width;
+    const cyC = WIN_H - 24;
+    this._creditRect = { x: cx - cw/2, y: cyC - 12, w: cw, h: 24 };
+    text(credit, cx, cyC, { size: 14, color: this.creditHover ? C.accent : C.dim, align: "center", base: "middle" });
 
     if (vec) {
       const { letter, score } = gm.bestMatch(vec, gm.recordedLetters());
