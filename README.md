@@ -20,6 +20,8 @@ hand as training data. It ships in two flavours:
 
 ## Try it online
 
+**▶ Live demo: https://silent-talk-web-gr.vercel.app/**
+
 The web edition needs only a webcam and a modern browser (Chrome/Edge/Firefox).
 Camera access requires HTTPS — Vercel provides it automatically, and `localhost`
 works for local dev.

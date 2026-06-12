@@ -5,6 +5,8 @@ browser via **MediaPipe Tasks Vision (WASM)**; the gesture classifier (normalize
 + KNN/cosine) is ported to JavaScript and runs entirely on the device. No server,
 no data leaves the browser.
 
+**▶ Live demo: https://silent-talk-web-gr.vercel.app/**
+
 ## Local dev
 
 ```bash

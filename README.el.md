@@ -21,6 +21,8 @@
 
 ## Δοκίμασέ το online
 
+**▶ Ζωντανό demo: https://silent-talk-web-gr.vercel.app/**
+
 Η web έκδοση χρειάζεται μόνο webcam και έναν σύγχρονο browser (Chrome/Edge/Firefox).
 Η πρόσβαση στην κάμερα απαιτεί HTTPS — το Vercel το παρέχει αυτόματα, και τοπικά το
 `localhost` επιτρέπεται.
