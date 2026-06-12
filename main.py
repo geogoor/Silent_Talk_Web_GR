@@ -114,15 +114,13 @@ def _load_ref(letter: str, w: int, h: int):
     if os.path.exists(p):
         img = cv2.imread(p)
         if img is not None:
-            # Letterbox: fit within (w,h) preserving aspect, center on C_BG bars
+            # Cover: fill (w,h) preserving aspect, center-crop the overflow
             ih, iw = img.shape[:2]
-            scale  = min(w / iw, h / ih)
-            nw, nh = max(1, int(round(iw * scale))), max(1, int(round(ih * scale)))
+            scale  = max(w / iw, h / ih)
+            nw, nh = max(w, int(round(iw * scale))), max(h, int(round(ih * scale)))
             resized = cv2.resize(img, (nw, nh), interpolation=cv2.INTER_AREA)
-            canvas  = np.full((h, w, 3), C_BG, dtype=np.uint8)
-            x0, y0  = (w - nw) // 2, (h - nh) // 2
-            canvas[y0:y0+nh, x0:x0+nw] = resized
-            return canvas
+            x0, y0  = (nw - w) // 2, (nh - h) // 2
+            return resized[y0:y0+h, x0:x0+w].copy()
     # Placeholder
     ph = np.full((h, w, 3), (28,28,45), dtype=np.uint8)
     _pil_text(ph, "?", (w//2, h//2), size=120,

@@ -65,9 +65,11 @@ function refImage(letter) {
 function drawLetterbox(im, x, y, w, h) {
   rect(x, y, w, h, C.bg);
   if (!im.complete || !im.naturalWidth) return;
-  const scale = Math.min(w / im.naturalWidth, h / im.naturalHeight);
-  const nw = im.naturalWidth * scale, nh = im.naturalHeight * scale;
-  ctx.drawImage(im, x + (w - nw) / 2, y + (h - nh) / 2, nw, nh);
+  // Cover: fill (w,h) preserving aspect, center-crop the overflow
+  const iw = im.naturalWidth, ih = im.naturalHeight;
+  const sw = Math.min(iw, ih * (w / h));
+  const sh = Math.min(ih, iw * (h / w));
+  ctx.drawImage(im, (iw - sw) / 2, (ih - sh) / 2, sw, sh, x, y, w, h);
 }
 
 // ── App ─────────────────────────────────────────────────────────────────────────
