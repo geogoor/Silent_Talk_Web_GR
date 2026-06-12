@@ -261,32 +261,36 @@ class App {
     });
 
     const rec = gm.recordedLetters().length, best = scores.bestScore();
-    text(`${rec} / 24 γράμματα  ·  Ρεκόρ: ${best} pts`, cx, WIN_H-78, { size: 15, color: C.dim, align: "center", base: "middle" });
+    text(`${rec} / 24 γράμματα  ·  Ρεκόρ: ${best} pts`, cx, WIN_H-86, { size: 15, color: C.dim, align: "center", base: "middle" });
 
-    // Credits — both lines are clickable (open a mailto)
+    // Credits — both lines are clickable (open a mailto); ✉ signals the affordance
     this._links = [];
     const sz = 13;
     const creditLines = [
-      { text: "Δημιουργός: Γουρζιώτης Γιώργος  ·  georgegourziotis@gmail.com",
+      { text: "Δημιουργία: Γουρζιώτης Γιώργος  ·  ✉ georgegourziotis@gmail.com",
         url: "mailto:georgegourziotis@gmail.com" },
-      { text: "Φωτογραφίες: Γιάννης Παπαβασιλείου  ·  gpapava@gmail.com",
+      { text: "Φωτογραφίες: Γιάννης Παπαβασιλείου  ·  ✉ gpapava@gmail.com",
         url: "mailto:gpapava@gmail.com" },
     ];
     creditLines.forEach((c, i) => {
       ctx.font = fontStr(sz);
       const cw = ctx.measureText(c.text).width;
-      const cyC = WIN_H - 44 + i * 22;
+      const cyC = WIN_H - 52 + i * 22;
       const hover = this._hoverLink === i;
       this._links.push({ x: cx - cw/2, y: cyC - 11, w: cw, h: 22, url: c.url });
       text(c.text, cx, cyC, { size: sz, color: hover ? C.accent : C.dim, align: "center", base: "middle" });
     });
 
+    // Live recognition — a tidy labelled card, bottom-right (only when a hand reads)
     if (vec) {
       const { letter, score } = gm.bestMatch(vec, gm.recordedLetters());
       if (letter && score > 0.65) {
-        panel(HALF, 0, HALF, 72, C.surface, 0.75);
-        text(letter, HALF+36, 36, { size: 32, color: C.amber, align: "left", base: "middle" });
-        text(`${Math.round(score*100)}%`, HALF+90, 36, { size: 20, color: C.dim, align: "left", base: "middle" });
+        const bw = 196, bh = 64, bx = WIN_W - bw - 18, by = WIN_H - bh - 26;
+        panel(bx, by, bw, bh, C.surface, 0.9);
+        ctx.strokeStyle = "rgb(60,56,52)"; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, bh);
+        text("ΣΕ ΑΝΑΓΝΩΡΙΖΕΙ", bx+16, by+17, { size: 11, color: C.dim, base: "middle" });
+        text(letter, bx+16, by+43, { size: 28, color: C.amber, base: "middle" });
+        text(`${Math.round(score*100)}%`, bx+58, by+44, { size: 20, color: C.dim, base: "middle" });
       }
     }
   }
@@ -319,8 +323,11 @@ class App {
     ctx.fillStyle = g; ctx.fillRect(0, imgH-180, HALF, 180);
 
     text(letter, 22, imgH-18, { size: 80, color: C.amber, base: "alphabetic" });
+    ctx.font = fontStr(80);
+    const glyphW = ctx.measureText(letter).width;
+    text(LETTER_NAMES[letter] || "", 30 + glyphW, imgH-30, { size: 27, color: C.text, base: "alphabetic" });
     text(`${this.learnIdx+1} / 24`, HALF-16, imgH-18, { size: 18, color: C.dim, align: "right" });
-    text("← →", 70, 32, { size: 15, color: "rgb(120,116,112)", base: "middle" });
+    text("←   →", HALF/2, imgH-26, { size: 16, color: "rgb(120,116,112)", align: "center", base: "alphabetic" });
 
     rect(0, imgH, HALF, PROGRESS_H, C.bg);
     const ratio = this.learnIdx / 23, filled = Math.max(2, HALF*ratio);
@@ -346,7 +353,7 @@ class App {
       } else if (score >= MATCH_THRESHOLD) {
         text("✓  Κράτα για να προχωρήσεις", HALF+HALF/2, fy+68, { size: 17, color: C.success, align: "center", base: "middle" });
       } else {
-        text("Αντέγραψε την χειρονομία από μνήμη", HALF+HALF/2, fy+68, { size: 16, color: "rgb(72,68,65)", align: "center", base: "middle" });
+        text("Μιμήσου το σημείο αριστερά", HALF+HALF/2, fy+68, { size: 16, color: "rgb(110,105,100)", align: "center", base: "middle" });
       }
     }
   }
